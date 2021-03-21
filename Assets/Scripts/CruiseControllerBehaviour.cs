@@ -8,18 +8,15 @@ using UnityEngine.UI;
 
 public class CruiseControllerBehaviour : Agent
 {
-    /* General Note:
-     * Each vehicle is assumed to have braking distance less than or equal to zone length.
-    */
     public IntersectionBehaviour Intersection;
     public Transform ZoneStart, ZoneEnd;
-    public Text VelocityUI;
-    public static float ZoneLength = 100f;
+    public Text CruiseValueUI;
+    public static float ZoneLength = 10f;
 
     [Header("RL Parameters")]
     [HideInInspector]
     public int ZoneID = -1; // only for dictionary purposes
-    private static int ZoneIDUnique = -1;
+    private static int ZoneIDIndexer = -1;
     private float intersection_distance, intersection_length;
     [SerializeField]
     public RoadBehaviour.LaneType Lane = RoadBehaviour.LaneType.None;
@@ -27,32 +24,24 @@ public class CruiseControllerBehaviour : Agent
     public static SortedDictionary<int, int> VehicleCountHisto = new SortedDictionary<int, int>();
     public static SortedDictionary<int, float> CruiseValueHisto = new SortedDictionary<int, float>();
 
-    private float local_reward = 0f;
-    public static float GlobalReward = 0f;
-    public Text GlobalRewardUI;
-
     public override void Initialize()
     {
-        ZoneID = ++ZoneIDUnique;
+        ZoneID = ++ZoneIDIndexer;
 
-        if (ZoneID == -1) Debug.LogError("ZoneID not set! Check!");
-        else {
-            Vector3 intersection_distance_vector = (transform.position - Intersection.transform.position);
-            intersection_distance = intersection_distance_vector.x;
-            if (intersection_distance_vector.y > intersection_distance) intersection_distance = intersection_distance_vector.y;
-            if(intersection_distance_vector.z > intersection_distance) intersection_distance = intersection_distance_vector.z;
-            intersection_length = Intersection.transform.localScale.z;
-            lane_hot_id = RoadBehaviour.GetLaneID(Lane);
-            VehicleCountHisto.Add(ZoneID, 0);
-            CruiseValueHisto.Add(ZoneID, -1f);
-        }
+        Vector3 intersection_distance_vector = (transform.position - Intersection.transform.position);
+        intersection_distance = intersection_distance_vector.x;
+        if (intersection_distance_vector.y > intersection_distance) intersection_distance = intersection_distance_vector.y;
+        if (intersection_distance_vector.z > intersection_distance) intersection_distance = intersection_distance_vector.z;
+        intersection_length = Intersection.transform.localScale.z;
+        lane_hot_id = RoadBehaviour.GetLaneID(Lane);
+        VehicleCountHisto.Add(ZoneID, 0);
+        CruiseValueHisto.Add(ZoneID, -1f);
     }
 
     public override void OnEpisodeBegin()
     {
         VehicleCountHisto[ZoneID] = 0;
         CruiseValueHisto[ZoneID] = -1f;
-        local_reward = 0f;
     }
 
     public override void CollectObservations(VectorSensor sensor)
@@ -80,12 +69,11 @@ public class CruiseControllerBehaviour : Agent
     {
         CruiseValueHisto[ZoneID] = Mathf.Clamp(actions.ContinuousActions[0], 0f, 1f);
 
-        // increase zone cruise value
-        local_reward += CruiseValueHisto[ZoneID];
-        // decrease congession in zone
-        local_reward -= OurMathFuncs.Sigmoid(VehicleCountHisto[ZoneID]);
+        // saftey reward
+        AddReward(SpawnBehaviour.VehicleUnDestroyedCount/SpawnBehaviour.VehicleDensity);
 
-        SetReward(local_reward + GlobalReward);
+        // flow-rate reward
+        AddReward(SpawnBehaviour.VehicleIntersectionPassedCount/SpawnBehaviour.VehicleDensity);
     }
 
 
@@ -98,8 +86,7 @@ public class CruiseControllerBehaviour : Agent
 
     void FixedUpdate()
     {
-        if (VelocityUI != null) VelocityUI.text = string.Format("Cruise Value = {0:0.00}", CruiseValueHisto[ZoneID]);
-        if (GlobalRewardUI != null) GlobalRewardUI.text = "Global Reward = " + GlobalReward.ToString();
+        if (CruiseValueUI != null) CruiseValueUI.text = string.Format("Cruise Value = {0:0.00}", CruiseValueHisto[ZoneID]);
     }
 
     void OnTriggerEnter(Collider collider)
@@ -107,7 +94,15 @@ public class CruiseControllerBehaviour : Agent
         if (collider.tag.Equals("traffic"))
         {
             VehicleCountHisto[ZoneID]++;
-            collider.GetComponent<VehicleBehaviour>().RegisterDeltaVelocity();
+            collider.GetComponent<VehicleBehaviour>().CruiseController = this;
+        }
+    }
+
+    void OnTriggerStay(Collider collider)
+    {
+        if (collider.tag.Equals("traffic") && collider.GetComponent<VehicleBehaviour>().CruiseController == null)
+        {
+            VehicleCountHisto[ZoneID]++;
             collider.GetComponent<VehicleBehaviour>().CruiseController = this;
         }
     }

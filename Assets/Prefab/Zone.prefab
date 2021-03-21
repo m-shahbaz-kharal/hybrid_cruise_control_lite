@@ -103,7 +103,7 @@ Transform:
   m_GameObject: {fileID: 8978763970745580068}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 100}
+  m_LocalScale: {x: 1, y: 1, z: 10}
   m_Children:
   - {fileID: 8978763970826853707}
   - {fileID: 8978763971796576629}
@@ -136,7 +136,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BrainParameters:
-    VectorObservationSize: 22
+    VectorObservationSize: 86
     NumStackedVectorObservations: 1
     m_ActionSpec:
       m_NumContinuousActions: 1
@@ -173,7 +173,7 @@ MonoBehaviour:
     type: 3}
   ZoneStart: {fileID: 8978763971420268870}
   ZoneEnd: {fileID: 8978763972194285378}
-  VelocityUI: {fileID: 8978763970914677251}
+  VelocityUI: {fileID: 0}
   ZoneID: -1
   Lane: 0
   GlobalRewardUI: {fileID: 0}
@@ -398,7 +398,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &8978763971796576629
 RectTransform:
   m_ObjectHideFlags: 0

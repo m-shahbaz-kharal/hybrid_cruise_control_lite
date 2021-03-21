@@ -78,12 +78,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   BodyFront: {fileID: 5754679071874452052}
   SensorRange: 40
-  BrakingEfficiency: 10
+  BrakingEfficiency: 30
   SafeDistance: 30
   SpeedingEfficiency: 10
   HumanDecidedVelocity: -1
   RandomVelocityChangeInterval: 5
-  VelocityUI: {fileID: 1065051865369725072}
+  VelocityUI: {fileID: 0}
   CruiseController: {fileID: 0}
   MaxZ: -1
 --- !u!1 &2502767401878495412
@@ -104,7 +104,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &6908241290595543352
 RectTransform:
   m_ObjectHideFlags: 0

@@ -5,14 +5,15 @@ using UnityEngine.UI;
 
 public class SpawnBehaviour : MonoBehaviour
 {
-    public int VehicleDensity = 50;
-    public float VehicleSafeSpawnDistance = 20f;
+    public static int VehicleDensity = 100;
+    public float VehicleMaxSpawnDelta = 60f;
     private float vehicle_body_length = -1f;
-    public int ZoneDensityPerLane = 5;
+    public int ZoneDensityPerLane = 20;
     public Transform SpawnZR, SpawnZL, SpawnXR, SpawnXL;
     public GameObject VehiclePrefab, ZonePrefab;
 
-    public Text VehicleCountUI, GlobalRewardUI;
+    public Text VehicleUnDestroyedCountUI, VehicleDestroyedCountUI, VehicleIntersectionPassedCountUI;
+    public static int VehicleUnDestroyedCount = 0, VehicleDestroyedCount = 0, VehicleIntersectionPassedCount = 0;
     void Awake()
     {
         vehicle_body_length = VehiclePrefab.transform.GetChild(0).transform.localScale.z;
@@ -20,22 +21,24 @@ public class SpawnBehaviour : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (VehicleCountUI != null) VehicleCountUI.text = "Vehicle Count = " + VehicleBehaviour.VehicleCount.ToString();
+        if (VehicleUnDestroyedCountUI != null) VehicleUnDestroyedCountUI.text = "Vehicle UnDestroyed Count = " + VehicleUnDestroyedCount.ToString();
+        if (VehicleDestroyedCountUI != null) VehicleDestroyedCountUI.text = "Vehicle Destroyed Count = " + VehicleDestroyedCount.ToString();
+        if (VehicleIntersectionPassedCountUI != null) VehicleIntersectionPassedCountUI.text = "Vehicle Intersection Passed Count = " + VehicleIntersectionPassedCount.ToString();
     }
 
-    private GameObject SpawnVehicle(Transform spawn_point, float initial_velocity, float offset)
+    private GameObject SpawnVehicle(Transform spawn_point, float offset, float initial_velocity)
     {
-        GameObject car = Instantiate(VehiclePrefab, spawn_point);
-        car.SetActive(false);
-        car.transform.localPosition = Vector3.zero;
-        car.transform.localRotation = Quaternion.identity;
-        car.transform.position += car.transform.forward * offset;
-        VehicleBehaviour vb = car.GetComponent<VehicleBehaviour>();
-        vb.HumanDecidedVelocity = initial_velocity;
-        vb.MaxZ = (ZoneDensityPerLane * CruiseControllerBehaviour.ZoneLength) + RoadBehaviour.LaneWidth + vehicle_body_length;
-        car.SetActive(true);
+        GameObject vehicle = Instantiate(VehiclePrefab, spawn_point);
+        vehicle.SetActive(false);
+        vehicle.transform.localPosition = Vector3.zero;
+        vehicle.transform.localRotation = Quaternion.identity;
+        vehicle.transform.position += vehicle.transform.forward * offset;
+        VehicleBehaviour vehicle_behaviour = vehicle.GetComponent<VehicleBehaviour>();
+        vehicle_behaviour.HumanDecidedVelocity = initial_velocity;
+        vehicle_behaviour.DrivableRoadLength = (ZoneDensityPerLane * CruiseControllerBehaviour.ZoneLength) + RoadBehaviour.LaneWidth + vehicle_body_length;
+        vehicle.SetActive(true);
 
-        return car;
+        return vehicle;
     }
 
     private CruiseControllerBehaviour SpawnZone(Transform spawn_point, float offset)
@@ -48,8 +51,9 @@ public class SpawnBehaviour : MonoBehaviour
         return zone.GetComponent<CruiseControllerBehaviour>();
     }
 
-    public void SpawnLearnStepVehicles()
+    public IEnumerator SpawnLearnStepVehicles()
     {
+        yield return new WaitForEndOfFrame();
         float x_split = Random.Range(0.25f,0.75f);
         float z_split = 1f - x_split;
         int x_split_car_count = Mathf.RoundToInt(x_split * VehicleDensity);
@@ -60,23 +64,25 @@ public class SpawnBehaviour : MonoBehaviour
         if(count != 0) count = count > 0 ? x_split_car_count : z_split_car_count;
         int x_car_count = 0, z_car_count = 0;
 
-        float base_offset = -RoadBehaviour.LaneWidth - (ZoneDensityPerLane * CruiseControllerBehaviour.ZoneLength) - vehicle_body_length;
+        // float base_offset = -RoadBehaviour.LaneWidth - (ZoneDensityPerLane * CruiseControllerBehaviour.ZoneLength) - vehicle_body_length;
+        float base_offset = -RoadBehaviour.LaneWidth - vehicle_body_length;
         for (int i = 0; i < count; i++)
         {
             if (x_car_count < x_split_car_count)
             {
-                last_x_spawn_distance += Random.Range(i == 0 ? 0f : vehicle_body_length * 2f, VehicleSafeSpawnDistance);
-                SpawnVehicle(SpawnXR, Random.Range(10f, RoadBehaviour.SpeedLimit), base_offset - last_x_spawn_distance);
+                last_x_spawn_distance += Random.Range(i == 0 ? 0f : vehicle_body_length * 2f, VehicleMaxSpawnDelta);
+                SpawnVehicle(SpawnXR, base_offset - last_x_spawn_distance, Random.Range(10f, RoadBehaviour.SpeedLimit));
                 x_car_count++;
             }
 
             if (z_car_count < z_split_car_count)
             {
-                last_z_spawn_distance += Random.Range(i == 0 ? 0f : vehicle_body_length * 2f, VehicleSafeSpawnDistance);
-                SpawnVehicle(SpawnZR, Random.Range(10f, RoadBehaviour.SpeedLimit), base_offset - last_z_spawn_distance);
+                last_z_spawn_distance += Random.Range(i == 0 ? 0f : vehicle_body_length * 2f, VehicleMaxSpawnDelta);
+                SpawnVehicle(SpawnZR, base_offset - last_z_spawn_distance, Random.Range(10f, RoadBehaviour.SpeedLimit));
                 z_car_count++;
             }
         }
+        yield break;
     }
 
     public void DestroyVehicles()
@@ -94,27 +100,25 @@ public class SpawnBehaviour : MonoBehaviour
         {
             float f_offset = RoadBehaviour.LaneWidth + i * CruiseControllerBehaviour.ZoneLength;
             float r_offset = -(f_offset + CruiseControllerBehaviour.ZoneLength);
-            CruiseControllerBehaviour zrf = SpawnZone(SpawnZR, f_offset);
+            //CruiseControllerBehaviour zrf = SpawnZone(SpawnZR, f_offset);
             CruiseControllerBehaviour zrr = SpawnZone(SpawnZR, r_offset);
             //CruiseControllerBehaviour zlf = SpawnZone(ZoneSpawnZL, f_offset);
             //CruiseControllerBehaviour zlr = SpawnZone(ZoneSpawnZL, r_offset);
-            CruiseControllerBehaviour xrf = SpawnZone(SpawnXR, f_offset);
+            //CruiseControllerBehaviour xrf = SpawnZone(SpawnXR, f_offset);
             CruiseControllerBehaviour xrr = SpawnZone(SpawnXR, r_offset);
             //CruiseControllerBehaviour xlf = SpawnZone(ZoneSpawnXL, f_offset);
             //CruiseControllerBehaviour xlr = SpawnZone(ZoneSpawnXL, r_offset);
 
-            zrf.Lane = RoadBehaviour.LaneType.ZRLane;
-            zrf.GlobalRewardUI = GlobalRewardUI;
+            //zrf.Lane = RoadBehaviour.LaneType.ZRLane;
+            //zrf.GlobalRewardUI = GlobalRewardUI;
             zrr.Lane = RoadBehaviour.LaneType.ZRLane;
-            zrr.GlobalRewardUI = GlobalRewardUI;
             //zlf.Lane = RoadBehaviour.LaneType.ZLLane;
             //zlf.GlobalRewardUI = GlobalRewardUI;
             //zlr.Lane = RoadBehaviour.LaneType.ZLLane;
             //zlr.GlobalRewardUI = GlobalRewardUI;
-            xrf.Lane = RoadBehaviour.LaneType.XRLane;
-            xrf.GlobalRewardUI = GlobalRewardUI;
+            //xrf.Lane = RoadBehaviour.LaneType.XRLane;
+            //xrf.GlobalRewardUI = GlobalRewardUI;
             xrr.Lane = RoadBehaviour.LaneType.XRLane;
-            xrr.GlobalRewardUI = GlobalRewardUI;
             //xlf.Lane = RoadBehaviour.LaneType.XLLane;
             //xlf.GlobalRewardUI = GlobalRewardUI;
             //xlr.Lane = RoadBehaviour.LaneType.XLLane;
