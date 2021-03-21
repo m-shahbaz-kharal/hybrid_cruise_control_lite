@@ -81,9 +81,11 @@ MonoBehaviour:
   BrakingEfficiency: 10
   SafeDistance: 30
   SpeedingEfficiency: 10
-  ManualVelocity: 0
+  HumanDecidedVelocity: -1
+  RandomVelocityChangeInterval: 5
   VelocityUI: {fileID: 1065051865369725072}
-  Zone: {fileID: 0}
+  CruiseController: {fileID: 0}
+  MaxZ: -1
 --- !u!1 &2502767401878495412
 GameObject:
   m_ObjectHideFlags: 0
