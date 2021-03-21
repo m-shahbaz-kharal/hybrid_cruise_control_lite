@@ -25,7 +25,7 @@ behaviors:
         num_layers: 3
         vis_encode_type: simple
     keep_checkpoints: 10
-    max_steps: 3e6
+    max_steps: 5e6
     time_horizon: 512
     summary_freq: 50000
     threaded: true
